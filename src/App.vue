@@ -4,64 +4,126 @@
       <div class="form-control">
         <label for="type">Тип блока</label>
         <select id="type" v-model="typeBlock">
-          <option value="title">Заголовок</option>
-          <option value="subtitle">Подзаголовок</option>
-          <option value="avatar">Аватар</option>
-          <option value="text">Текст</option>
+          <option selected value="AppAddTitle"  >Заголовок</option>
+          <option value="AddSubTitle">Подзаголовок</option>
+          <option value="AddImg">Аватар</option>
+          <option value="AddText">Текст</option>
         </select>
       </div>
 
       <div class="form-control">
-        <label for="value">Значение</label>
-        <textarea id="value" rows="3"></textarea>
+        <label for="valueText">Значение</label>
+        <textarea id="valueText" rows="3" v-model="textareaValue"></textarea>
       </div>
 
-      <button class="btn primary" @click.prevent="addParts">Добавить</button>
+      <button
+          class="btn primary"
+          @click.prevent="addParts"
+          :disabled="checkLength"
+      >Добавить</button>
     </form>
-
-    <div class="card card-w70">
-      <h1>Резюме Nickname</h1>
-      <div class="avatar">
-        <img src="https://cdn.dribbble.com/users/5592443/screenshots/14279501/drbl_pop_r_m_rick_4x.png">
-      </div>
-      <h2>Опыт работы</h2>
-      <p>
-        главный герой американского мультсериала «Рик и Морти», гениальный учёный, изобретатель, атеист (хотя в некоторых сериях он даже молится Богу, однако, каждый раз после чудесного спасения ссылается на удачу и вновь отвергает его существование), алкоголик, социопат, дедушка Морти. На момент начала третьего сезона ему 70 лет[1]. Рик боится пиратов, а его главной слабостью является некий - "Санчезиум". Исходя из того, что существует неограниченное количество вселенных, существует неограниченное количество Риков, герой сериала предположительно принадлежит к измерению С-137. В серии комикcов Рик относится к измерению C-132, а в игре «Pocket Mortys» — к измерению C-123[2]. Прототипом Рика Санчеза является Эмметт Браун, герой кинотрилогии «Назад в будущее»[3].
-      </p>
+    <div class="card card-w70" v-if="this.components[0]">
+      <component v-for="(item, index) in components"
+                 :key="index"
+                 :content="item.text"
+                 :is="item.currentComponent">
+      </component>
+    </div>
+    <div class="card card-w70" v-else>
       <h3>Добавьте первый блок, чтобы увидеть результат</h3>
     </div>
   </div>
+
   <div class="container">
-    <p>
-      <button class="btn primary">Загрузить комментарии</button>
+    <p v-if="!openComments">
+      <button class="btn primary" @click="loadComments">Загрузить комментарии</button>
     </p>
-    <div class="card">
+    <div class="card" v-else>
       <h2>Комментарии</h2>
       <ul class="list">
-        <li class="list-item">
-          <div>
-            <p><strong>test@microsoft.com</strong></p>
-            <small>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Eligendi, reiciendis.</small>
-          </div>
-        </li>
+<AddComments
+    v-for="(comment , idx) in listComments"
+    :key="idx"
+    :eMail="comment.email"
+    :commentText="comment.body"
+
+></AddComments>
       </ul>
     </div>
-    <div class="loader"></div>
+    <div class="loader"  v-if="loading"></div>
   </div>
 </template>
 
 <script>
+import AppAddTitle from "@/components/AppAddTitle.vue";
+import AddSubTitle from "@/components/AddSubTitle.vue";
+import AddImg from "@/components/AddImg.vue";
+import AddText from "@/components/AddText.vue";
+import AddComments from "@/components/AddComments.vue";
 export default {
  data(){
    return{
-     typeBlock:
+     typeBlock:'AppAddTitle',
+     textareaValue:'',
+     components:[],
+     openComments: false,
+     loading: false,
+     listComments: String
    }
  },
+  computed:{
+   checkLength(){
+     return this.textareaValue.length < 3
+   }
+  },
+  created() {
+   this.fetchData()
+  },
   methods:{
+   async fetchData(){
+     try {
+       let response = await fetch('https://my-project-dc3d7-default-rtdb.firebaseio.com/blocks.json',{
+         method: 'GET'
+       })
+       let data = await response.json()
+       this.components = Object.values(data)
+     }catch (error){
+       this.components.push(error)
+     }
+    },
     addParts(){
-      console.log(this.typeBlock)
-    }
+      fetch('https://my-project-dc3d7-default-rtdb.firebaseio.com/blocks.json',{
+        method: 'POST',
+        body: JSON.stringify({text: this.textareaValue,
+          currentComponent:  this.typeBlock}),
+      })
+      this.components.push({
+        text: this.textareaValue,
+        currentComponent:  this.typeBlock
+      })
+      this.typeBlock = 'AppAddTitle'
+      this. textareaValue=''
+    },
+    async loadComments() {
+      this.loading = true;
+      const data = await fetch('https://jsonplaceholder.typicode.com/comments?_limit=42.json')
+      this.listComments = await data.json()
+
+      console.log(this.listComments)
+      try {
+        // Выполняйте необходимые действия для загрузки комментариев
+      } catch (error) {
+        console.log(error);
+      } finally {
+        this.loading = false;
+        this.openComments = true;
+      }
+    },
+    },
+  components:{
+   AppAddTitle,AddSubTitle,AddImg,AddText,AddComments
   }
+
 }
 </script>
 
